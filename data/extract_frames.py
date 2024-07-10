@@ -6,7 +6,7 @@ from tqdm import tqdm
 
 import pdb
 
-dataset = 'breakfast'
+dataset = 'msrvtt'
 src_base_dir = f'{dataset}/videos'
 dst_base_dir = f'{dataset}/frames'
 fps = 10

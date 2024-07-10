@@ -1,47 +1,27 @@
-"""
- Copyright (c) 2022, salesforce.com, inc.
- All rights reserved.
- SPDX-License-Identifier: BSD-3-Clause
- For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
-"""
-
 import os
+import zipfile
 from pathlib import Path
 
 from omegaconf import OmegaConf
 
 from lavis.common.utils import (
     cleanup_dir,
-    download_and_extract_archive,
     get_abs_path,
     get_cache_path,
 )
 
-
-# TODO
-# 1. Go to https://www.mediafire.com/file/czh8sezbo9s4692/test_videos.zip/file
-#      and https://www.mediafire.com/file/x3rrbe4hwp04e6w/train_val_videos.zip/file
-# 2. Right-click the Download button and copy the link address
-#      e.g.
-#    DATA_URL = {
-#        "train": "https://download1602.mediafire.com/xxxxxxxxxxxx/x3rrbe4hwp04e6w/train_val_videos.zip",
-#        "test": "https://download2390.mediafire.com/xxxxxxxxxxxx/czh8sezbo9s4692/test_videos.zip",
-#    }
-# 3. Paste the link address to DATA_URL
-
-DATA_URL = {
-    "train": "https://download2295.mediafire.com/4bb7p74xrbgg/x3rrbe4hwp04e6w/train_val_videos.zip",
-    "test": "https://download2390.mediafire.com/79hfq3592lqg/czh8sezbo9s4692/test_videos.zip",
+LOCAL_DATA_PATH = {
+    "train": "/home/user/Downloads/train_val_videos.zip",
+    "test": "/home/user/Downloads/test_videos.zip",
 }
 
-
-def download_datasets(root, url):
+def extract_datasets(root, file_path, extract_to):
     """
-    Download the Imagenet-R dataset archives and expand them
+    Extract the dataset archives from the local file paths
     in the folder provided as parameter
     """
-    download_and_extract_archive(url=url, download_root=root)
-
+    with zipfile.ZipFile(file_path, 'r') as zip_ref:
+        zip_ref.extractall(extract_to)
 
 def merge_datasets(download_path, storage_path):
     """
@@ -49,8 +29,8 @@ def merge_datasets(download_path, storage_path):
     """
 
     # Merge train and test datasets
-    train_path = os.path.join(download_path, "TrainValVideo")
-    test_path = os.path.join(download_path, "TestVideo")
+    train_path = os.path.join(download_path, "train_val_videos")
+    test_path = os.path.join(download_path, "test_videos")
     train_test_path = storage_path
 
     print("Merging to {}".format(train_test_path))
@@ -69,14 +49,11 @@ def merge_datasets(download_path, storage_path):
             os.path.join(train_test_path, file_name),
         )
 
-
 if __name__ == "__main__":
 
-    config_path = get_abs_path("configs/datasets/msrvtt/defaults_cap.yaml")
+    config_path = get_abs_path('/home/user/2024/main/MA-LMM/MA-LMM/lavis/configs/datasets/msrvtt/defaults_cap.yaml')
 
-    storage_dir = OmegaConf.load(
-        config_path
-    ).datasets.msrvtt_cap.build_info.videos.storage
+    storage_dir = OmegaConf.load('/home/user/2024/main/MA-LMM/MA-LMM/lavis/configs/datasets/msrvtt/defaults_qa.yaml').datasets.msrvtt_cap.build_info.videos.storage
 
     download_dir = Path(get_cache_path(storage_dir)).parent / "download"
     storage_dir = Path(get_cache_path(storage_dir))
@@ -86,13 +63,15 @@ if __name__ == "__main__":
         exit(0)
 
     try:
-        for k, v in DATA_URL.items():
-            print("Downloading {} to {}".format(v, k))
-            download_datasets(download_dir, v)
+        for k, v in LOCAL_DATA_PATH.items():
+            extract_to_dir = download_dir / k
+            print(f"Extracting {v} to {extract_to_dir}")
+            extract_datasets(download_dir, v, extract_to_dir)
     except Exception as e:
         # remove download dir if failed
         cleanup_dir(download_dir)
-        print("Failed to download or extracting datasets. Aborting.")
+        print("Failed to extract datasets. Aborting.")
+        print(e)
 
     try:
         merge_datasets(download_dir, storage_dir)
@@ -100,6 +79,7 @@ if __name__ == "__main__":
         # remove storage dir if failed
         cleanup_dir(download_dir)
         cleanup_dir(storage_dir)
-        print("Failed to merging datasets. Aborting.")
+        print("Failed to merge datasets. Aborting.")
+        print(e)
 
     cleanup_dir(download_dir)
